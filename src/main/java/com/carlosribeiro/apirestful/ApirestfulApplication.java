@@ -2,8 +2,10 @@ package com.carlosribeiro.apirestful;
 
 import com.carlosribeiro.apirestful.model.Categoria;
 import com.carlosribeiro.apirestful.model.Produto;
+import com.carlosribeiro.apirestful.model.Usuario;
 import com.carlosribeiro.apirestful.repository.CategoriaRepository;
 import com.carlosribeiro.apirestful.repository.ProdutoRepository;
+import com.carlosribeiro.apirestful.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -21,12 +23,22 @@ public class ApirestfulApplication implements CommandLineRunner {
     @Autowired
     private CategoriaRepository categoriaRepository;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
     public static void main(String[] args) {
         SpringApplication.run(ApirestfulApplication.class, args);
     }
 
     @Override
     public void run(String... args) throws Exception {
+
+        Usuario admin = new Usuario("admin", "desweb");
+        usuarioRepository.save(admin);
+
+        Usuario user = new Usuario("user", "desweb");
+        usuarioRepository.save(user);
+
         Categoria fruta = new Categoria("fruta");
         categoriaRepository.save(fruta);
 

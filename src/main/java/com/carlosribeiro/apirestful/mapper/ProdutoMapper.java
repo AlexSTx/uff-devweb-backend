@@ -1,9 +1,7 @@
 package com.carlosribeiro.apirestful.mapper;
 
-import com.carlosribeiro.apirestful.dto.CategoriaResumo;
 import com.carlosribeiro.apirestful.dto.ProdutoCreate;
 import com.carlosribeiro.apirestful.dto.ProdutoDto;
-import com.carlosribeiro.apirestful.model.Categoria;
 import com.carlosribeiro.apirestful.model.Produto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
