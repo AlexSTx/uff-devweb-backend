@@ -7,5 +7,5 @@ import java.util.List;
 public record CategoriaDto(Long id,
                            String nome,
                            @JsonProperty("produtos")
-                           List<ProdutoDto> produtosDto) {
+                           List<ProdutoResponse> produtosDto) {
 }

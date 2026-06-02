@@ -1,7 +1,7 @@
 package com.carlosribeiro.apirestful.service;
 
-import com.carlosribeiro.apirestful.dto.ProdutoCreate;
-import com.carlosribeiro.apirestful.dto.ProdutoDto;
+import com.carlosribeiro.apirestful.dto.ProdutoRequest;
+import com.carlosribeiro.apirestful.dto.ProdutoResponse;
 import com.carlosribeiro.apirestful.exception.EntidadeNaoEncontradaException;
 import com.carlosribeiro.apirestful.mapper.ProdutoMapper;
 import com.carlosribeiro.apirestful.model.Produto;
@@ -21,28 +21,28 @@ public class ProdutoService {
     @Autowired
     private ProdutoMapper produtoMapper;
 
-    public List<ProdutoDto> recuperarProdutos() {
+    public List<ProdutoResponse> recuperarProdutos() {
         List<Produto> produtos = produtoRepository.recuperarProduos();
-        return produtoMapper.toProdutosDto(produtos);
+        return produtoMapper.toProdutosResponse(produtos);
     }
 
-    public ProdutoDto recuperarProdutoPorId(long id) {
+    public ProdutoResponse recuperarProdutoPorId(long id) {
         Produto produto = produtoRepository.findById(id)
             .orElseThrow(() -> new EntidadeNaoEncontradaException(
                 "Produto com id = " + id + " não encontrado."));
-        return produtoMapper.toProdutoDto(produto);
+        return produtoMapper.toProdutoResponse(produto);
     }
 
-    public ProdutoDto cadastrarProduto(ProdutoCreate produtoCreate) {
-        Produto produto = produtoMapper.toProduto(produtoCreate);
+    public ProdutoResponse cadastrarProduto(ProdutoRequest produtoRequest) {
+        Produto produto = produtoMapper.toProduto(produtoRequest);
         produto = produtoRepository.save(produto);
-        return produtoMapper.toProdutoDto(produto);
+        return produtoMapper.toProdutoResponse(produto);
     }
 
-    public ProdutoDto alterarProduto(ProdutoDto produtoDto) {
-        Produto produto = produtoMapper.toProduto(produtoDto);
+    public ProdutoResponse alterarProduto(ProdutoRequest produtoRequest) {
+        Produto produto = produtoMapper.toProduto(produtoRequest);
         produto = produtoRepository.save(produto);
-        return produtoMapper.toProdutoDto(produto);
+        return produtoMapper.toProdutoResponse(produto);
     }
 
     public void removerProdutoPorId(long id) {
@@ -50,8 +50,8 @@ public class ProdutoService {
         produtoRepository.deleteById(id);
     }
 
-    public Page<ProdutoDto> recuperarProdutosComPaginacao(PageRequest pageRequest, String nome) {
+    public Page<ProdutoResponse> recuperarProdutosComPaginacao(PageRequest pageRequest, String nome) {
         Page<Produto> page = produtoRepository.recuperarProdutosComPaginacao(pageRequest, "%" + nome + "%");
-        return page.map((produto) -> produtoMapper.toProdutoDto(produto));
+        return page.map((produto) -> produtoMapper.toProdutoResponse(produto));
     }
 }
