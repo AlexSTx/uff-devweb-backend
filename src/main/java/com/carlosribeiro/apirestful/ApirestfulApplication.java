@@ -126,8 +126,8 @@ public class ApirestfulApplication implements CommandLineRunner {
         produtoRepository.save(produto);
 
         produto = new Produto(
-            "beringela.png",
-            "Beringela",
+            "berinjela.png",
+            "Berinjela",
             "1 unidade aprox. 370g",
             true,
             720,

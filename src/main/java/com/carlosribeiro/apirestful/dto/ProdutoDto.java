@@ -1,6 +1,5 @@
 package com.carlosribeiro.apirestful.dto;
 
-import com.carlosribeiro.apirestful.model.Categoria;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
