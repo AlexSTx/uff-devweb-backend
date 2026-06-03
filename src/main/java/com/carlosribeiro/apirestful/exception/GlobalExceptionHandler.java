@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,5 +51,20 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 map,
                 e.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(SQLIntegrityConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleSQLIntegrityConstraintViolation(
+        SQLIntegrityConstraintViolationException e, HttpServletRequest request) {
+        return new ResponseEntity<>(
+            new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.name(),
+                request.getMethod(),
+                request.getRequestURI(),
+                null,
+                e.getMessage()
+            ), HttpStatus.BAD_REQUEST);
     }
 }
