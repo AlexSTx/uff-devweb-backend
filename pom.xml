@@ -70,6 +70,32 @@
             <artifactId>mapstruct</artifactId>
             <version>1.5.5.Final</version> <!-- Use a versão estável mais recente -->
         </dependency>
+
+        <!-- ***************************************** -->
+        <!-- *  Dependências para o Spring Security  *  -->
+        <!-- ***************************************** -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.13.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.13.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.13.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>
