@@ -1,21 +1,26 @@
 package com.carlosribeiro.apirestful;
 
+import com.carlosribeiro.apirestful.auth.model.Usuario;
+import com.carlosribeiro.apirestful.auth.repository.UsuarioRepository;
+import com.carlosribeiro.apirestful.auth.util.Role;
 import com.carlosribeiro.apirestful.model.Categoria;
 import com.carlosribeiro.apirestful.model.Produto;
-import com.carlosribeiro.apirestful.model.Usuario;
 import com.carlosribeiro.apirestful.repository.CategoriaRepository;
 import com.carlosribeiro.apirestful.repository.ProdutoRepository;
-import com.carlosribeiro.apirestful.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @SpringBootApplication
 public class ApirestfulApplication implements CommandLineRunner {
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private ProdutoRepository produtoRepository;
@@ -33,12 +38,19 @@ public class ApirestfulApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        Usuario admin = new Usuario("admin", "desweb");
+        Usuario admin = new Usuario(
+            "Admin",
+            "admin@mail.com",
+            passwordEncoder.encode("desweb"),
+            Role.ADMIN);
         usuarioRepository.save(admin);
 
-        Usuario user = new Usuario("user", "desweb");
+        Usuario user = new Usuario(
+            "User",
+            "user@mail.com",
+            passwordEncoder.encode("desweb"),
+            Role.USER);
         usuarioRepository.save(user);
-
         Categoria fruta = new Categoria("fruta");
         categoriaRepository.save(fruta);
 
