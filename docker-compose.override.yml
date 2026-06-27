@@ -1,0 +1,49 @@
+# Dev-only overrides. docker compose automatically merges this file with the
+# base docker-compose.yml, so `docker compose up` runs in dev mode.
+# Remove (or rename) this file to go back to the production-style build images.
+
+services:
+  backend:
+    build:
+      context: ./uff-devweb-backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Hot-edit source from the host
+      - ./uff-devweb-backend:/app
+      # Persist Maven dependencies between runs
+      - maven_cache:/root/.m2/repository
+    environment:
+      SPRING_DEVTOOLS_RESTART_ENABLED: "true"
+      # Poll-based restart detection (works even if inotify misses bind-mount writes)
+      SPRING_DEVTOOLS_RESTART_POLL_INTERVAL: "2000"
+      SPRING_DEVTOOLS_RESTART_QUIET_PERIOD: "1000"
+    # Run the watcher that recompiles src and triggers devtools restart.
+    command: ["./dev-run.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      # spring-boot:run + first-time dep download can take a while
+      start_period: 90s
+      retries: 15
+
+  frontend:
+    build:
+      context: ./uff-webdev-frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Hot-edit frontend source from the host
+      - ./uff-webdev-frontend:/app
+      # Keep a container-native node_modules (don't shadow with host's)
+      - /app/node_modules
+    environment:
+      # Reliable HMR over a bind-mounted volume
+      VITE_HMR_POLLING: "true"
+      # HMR websocket connects back to the host port the browser used
+      VITE_CLIENT_PORT: "8081"
+    ports:
+      # browser on host:8081 -> Vite dev server in container:5173
+      - "8081:5173"
+
+volumes:
+  maven_cache:

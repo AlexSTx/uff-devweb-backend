@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+# Dev image: runs `mvn spring-boot:run` with the source bind-mounted at /app.
+# Source is not baked in; it is provided by the compose override volume mount.
+
+FROM maven:3.9-eclipse-temurin-25
+WORKDIR /app
+
+# Warm the local repo so spring-boot:run starts faster. (deps also downloaded
+# at runtime into the maven_cache named volume on first `docker compose up`.)
+COPY pom.xml .
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B -e dependency:go-offline
+
+# Watcher script comes from the bind-mounted source, but make a fallback copy
+# so the command works even before the mount is set up.
+COPY dev-run.sh /usr/local/bin/dev-run.sh
+RUN chmod +x /usr/local/bin/dev-run.sh
+
+EXPOSE 8080
+CMD ["mvn", "spring-boot:run"]
