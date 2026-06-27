@@ -8,8 +8,8 @@ services:
       context: ./uff-devweb-backend
       dockerfile: Dockerfile.dev
     volumes:
-      # Hot-edit source from the host
-      - ./uff-devweb-backend:/app
+      # Hot-edit source from the host (:z relabels for SELinux access)
+      - ./uff-devweb-backend:/app:z
       # Persist Maven dependencies between runs
       - maven_cache:/root/.m2/repository
     environment:
@@ -18,7 +18,7 @@ services:
       SPRING_DEVTOOLS_RESTART_POLL_INTERVAL: "2000"
       SPRING_DEVTOOLS_RESTART_QUIET_PERIOD: "1000"
     # Run the watcher that recompiles src and triggers devtools restart.
-    command: ["./dev-run.sh"]
+    command: ["sh", "./dev-run.sh"]
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8080' || exit 1"]
       interval: 15s
@@ -32,8 +32,8 @@ services:
       context: ./uff-webdev-frontend
       dockerfile: Dockerfile.dev
     volumes:
-      # Hot-edit frontend source from the host
-      - ./uff-webdev-frontend:/app
+      # Hot-edit frontend source from the host (:z relabels for SELinux)
+      - ./uff-webdev-frontend:/app:z
       # Keep a container-native node_modules (don't shadow with host's)
       - /app/node_modules
     environment:
