@@ -30,7 +30,6 @@ public record ProdutoRequest(
     @DecimalMin(inclusive = true, value = "0.1", message = "O 'Preço' deve ser maior ou igual a 0.1.")
     BigDecimal preco,
 
-    @NotNull(message = "A 'Data de Cadastro' deve ser informada.")
     LocalDate dataCadastro,
 
     @JsonProperty("categoria")

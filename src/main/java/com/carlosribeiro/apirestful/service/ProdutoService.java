@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -35,12 +36,15 @@ public class ProdutoService {
 
     public ProdutoResponse cadastrarProduto(ProdutoRequest produtoRequest) {
         Produto produto = produtoMapper.toProduto(produtoRequest);
+        produto.setDataCadastro(LocalDate.now());
         produto = produtoRepository.save(produto);
         return produtoMapper.toProdutoResponse(produto);
     }
 
     public ProdutoResponse alterarProduto(ProdutoRequest produtoRequest) {
         Produto produto = produtoMapper.toProduto(produtoRequest);
+        produtoRepository.findById(produto.getId())
+            .ifPresent(existing -> produto.setDataCadastro(existing.getDataCadastro()));
         produto = produtoRepository.save(produto);
         return produtoMapper.toProdutoResponse(produto);
     }
