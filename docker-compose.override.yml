@@ -41,7 +41,7 @@ services:
       VITE_HMR_POLLING: "true"
       # HMR websocket connects back to the host port the browser used
       VITE_CLIENT_PORT: "8081"
-    ports:
+    ports: !override
       # browser on host:8081 -> Vite dev server in container:5173
       - "8081:5173"
 
