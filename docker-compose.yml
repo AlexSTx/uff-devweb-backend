@@ -23,6 +23,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     env_file:
       - ./uff-devweb-backend/.env
     environment:
@@ -32,6 +34,24 @@ services:
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
     ports:
       - "8080:8080"
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: uff-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   frontend:
     build: ./uff-webdev-frontend
@@ -44,3 +64,4 @@ services:
 
 volumes:
   db_data:
+  rabbitmq_data:
