@@ -68,7 +68,7 @@ public class SecurityConfig {
                .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                .requestMatchers(HttpMethod.GET, "/produtos/**").permitAll()
 
-               .requestMatchers(HttpMethod.POST, "/produtos/**").hasAnyRole(Role.USER.name(), Role.ADMIN.name())
+               .requestMatchers(HttpMethod.POST, "/produtos/**").hasRole(Role.ADMIN.name())
                .requestMatchers(HttpMethod.PUT, "/produtos/**").hasRole(Role.ADMIN.name())
                .requestMatchers(HttpMethod.DELETE, "/produtos/**").hasRole(Role.ADMIN.name())
 
