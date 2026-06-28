@@ -6,6 +6,8 @@ import com.carlosribeiro.apirestful.dto.ItemPedidoResponse;
 import com.carlosribeiro.apirestful.dto.PedidoRequest;
 import com.carlosribeiro.apirestful.dto.PedidoResponse;
 import com.carlosribeiro.apirestful.exception.EntidadeNaoEncontradaException;
+import com.carlosribeiro.apirestful.messaging.EstoqueEsgotadoEvent;
+import com.carlosribeiro.apirestful.messaging.EstoqueEventProducer;
 import com.carlosribeiro.apirestful.model.FormaPagamento;
 import com.carlosribeiro.apirestful.model.ItemCarrinho;
 import com.carlosribeiro.apirestful.model.ItemPedido;
@@ -30,15 +32,18 @@ public class PedidoService {
     private final ItemCarrinhoRepository itemCarrinhoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ProdutoRepository produtoRepository;
+    private final EstoqueEventProducer estoqueEventProducer;
 
     public PedidoService(PedidoRepository pedidoRepository,
                          ItemCarrinhoRepository itemCarrinhoRepository,
                          UsuarioRepository usuarioRepository,
-                         ProdutoRepository produtoRepository) {
+                         ProdutoRepository produtoRepository,
+                         EstoqueEventProducer estoqueEventProducer) {
         this.pedidoRepository = pedidoRepository;
         this.itemCarrinhoRepository = itemCarrinhoRepository;
         this.usuarioRepository = usuarioRepository;
         this.produtoRepository = produtoRepository;
+        this.estoqueEventProducer = estoqueEventProducer;
     }
 
     public PedidoResponse criarPedido(PedidoRequest request) {
@@ -119,6 +124,18 @@ public class PedidoService {
             Produto produto = item.getProduto();
             produto.setQtdReservado(produto.getQtdReservado() - item.getQuantidade());
             produtoRepository.save(produto);
+
+            // Se o estoque físico zerou (qtdEstoque = comprado - reservado = 0),
+            // publica um EstoqueEsgotadoEvent no RabbitMQ para divulgar em tempo
+            // real via WebSocket a quem está com a página do produto aberta.
+            if (produto.getQtdEstoque() == 0) {
+                estoqueEventProducer.publicarEstoqueEsgotado(new EstoqueEsgotadoEvent(
+                    produto.getId(),
+                    produto.getNome(),
+                    0,
+                    LocalDateTime.now()
+                ));
+            }
         }
 
         return toResponse(pedido);
