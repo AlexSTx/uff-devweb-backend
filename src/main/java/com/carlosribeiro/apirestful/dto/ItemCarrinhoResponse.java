@@ -12,6 +12,14 @@ public record ItemCarrinhoResponse(
     BigDecimal precoUnitario,
     int quantidade,
     BigDecimal subtotal,
-    LocalDateTime dataAdicao
+    LocalDateTime dataAdicao,
+    // Indica se o produto ainda tem estoque físico no momento do GET /carrinho.
+    // Quando false, o frontend mostra o item visualmente apagado e um aviso
+    // de que ele esgotou desde a adição ao carrinho.
+    boolean disponivel,
+    // Estoque físico atual do produto no momento do GET. Permite ao frontend
+    // detectar também o caso "parcial": produto ainda disponível mas com
+    // quantidade menor do que a pedida no carrinho.
+    int estoqueDisponivel
 ) {
 }

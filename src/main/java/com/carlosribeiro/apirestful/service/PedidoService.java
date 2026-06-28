@@ -5,6 +5,7 @@ import com.carlosribeiro.apirestful.auth.repository.UsuarioRepository;
 import com.carlosribeiro.apirestful.dto.ItemPedidoResponse;
 import com.carlosribeiro.apirestful.dto.PedidoRequest;
 import com.carlosribeiro.apirestful.dto.PedidoResponse;
+import com.carlosribeiro.apirestful.exception.EstoqueInsuficienteException;
 import com.carlosribeiro.apirestful.exception.EntidadeNaoEncontradaException;
 import com.carlosribeiro.apirestful.messaging.EstoqueEsgotadoEvent;
 import com.carlosribeiro.apirestful.messaging.EstoqueEventProducer;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -58,6 +60,40 @@ public class PedidoService {
             .orElseThrow(() -> new EntidadeNaoEncontradaException(
                 "Usuário com id = " + usuarioId + " não encontrado."));
 
+        // ── 1. Pessimistic lock + validação ──────────────────────────────
+        // Travar cada produto ANTES de qualquer mutação, para evitar condição
+        // de corrida (dois checkouts lendo o mesmo estoque). Locks são
+        // liberados no commit/rollback da transação @Transactional.
+        List<Produto> produtosTravados = new ArrayList<>();
+        List<EstoqueInsuficienteException.ItemProblema> problemas = new ArrayList<>();
+        for (ItemCarrinho itemCarrinho : itensCarrinho) {
+            int quantidade = itemCarrinho.getQuantidade();
+            Long produtoId = itemCarrinho.getProduto().getId();
+
+            // SELECT ... FOR UPDATE — bloqueia a linha até o fim da tx.
+            Produto produto = produtoRepository.findByIdForUpdate(produtoId)
+                .orElseThrow(() -> new EntidadeNaoEncontradaException(
+                    "Produto com id = " + produtoId + " não encontrado."));
+
+            // Validação: a quantidade pedida não pode exceder o estoque físico
+            // atual. (O estoque visível já é o físico — a reserva de pedidos
+            // anteriores não conta como disponível porque já foiBaixada no
+            // estoque físico na criação deles.)
+            if (produto.getQtdEstoque() < quantidade) {
+                problemas.add(new EstoqueInsuficienteException.ItemProblema(
+                    produtoId,
+                    produto.getNome(),
+                    quantidade,
+                    produto.getQtdEstoque()));
+            }
+            produtosTravados.add(produto);
+        }
+
+        // Se algum item falhou, NÃOONEY muta o estoque: aborta aqui.
+        if (!problemas.isEmpty()) {
+            throw new EstoqueInsuficienteException(problemas);
+        }
+
         Pedido pedido = new Pedido(
             usuario,
             LocalDateTime.now(),
@@ -65,12 +101,15 @@ public class PedidoService {
             StatusPedido.PENDENTE,
             request.formaPagamento());
 
+        // ── 2. Mutação (estoque já validado e travado) ────────────────────
         BigDecimal valorTotal = BigDecimal.ZERO;
-        for (ItemCarrinho itemCarrinho : itensCarrinho) {
+        for (int i = 0; i < itensCarrinho.size(); i++) {
+            ItemCarrinho itemCarrinho = itensCarrinho.get(i);
+            Produto produto = produtosTravados.get(i);
             int quantidade = itemCarrinho.getQuantidade();
+
             // Reserva a quantidade comprada no estoque do produto: decrementa
             // o estoque físico e incrementa a quantidade reservada.
-            Produto produto = itemCarrinho.getProduto();
             produto.setQtdEstoque(produto.getQtdEstoque() - quantidade);
             produto.setQtdReservado(produto.getQtdReservado() + quantidade);
             produtoRepository.save(produto);

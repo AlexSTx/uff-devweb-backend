@@ -111,6 +111,10 @@ public class CarrinhoService {
     private ItemCarrinhoResponse toResponse(ItemCarrinho item) {
         Produto p = item.getProduto();
         BigDecimal subtotal = item.getPreco().multiply(BigDecimal.valueOf(item.getQuantidade()));
+        // disponivel=false quando estoque físico zerou; estoqueDisponivel
+        // permite ao frontend também identificar o caso "parcial" (estoque
+        // > 0 mas menor do que a quantidade pedida).
+        boolean disponivel = p.getQtdEstoque() > 0;
         return new ItemCarrinhoResponse(
             item.getId(),
             p.getId(),
@@ -120,7 +124,9 @@ public class CarrinhoService {
             item.getPreco(),
             item.getQuantidade(),
             subtotal,
-            item.getDataAdicao()
+            item.getDataAdicao(),
+            disponivel,
+            p.getQtdEstoque()
         );
     }
 }
