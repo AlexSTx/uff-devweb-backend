@@ -10,9 +10,11 @@ import com.carlosribeiro.apirestful.model.FormaPagamento;
 import com.carlosribeiro.apirestful.model.ItemCarrinho;
 import com.carlosribeiro.apirestful.model.ItemPedido;
 import com.carlosribeiro.apirestful.model.Pedido;
+import com.carlosribeiro.apirestful.model.Produto;
 import com.carlosribeiro.apirestful.model.StatusPedido;
 import com.carlosribeiro.apirestful.repository.ItemCarrinhoRepository;
 import com.carlosribeiro.apirestful.repository.PedidoRepository;
+import com.carlosribeiro.apirestful.repository.ProdutoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,13 +29,16 @@ public class PedidoService {
     private final PedidoRepository pedidoRepository;
     private final ItemCarrinhoRepository itemCarrinhoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final ProdutoRepository produtoRepository;
 
     public PedidoService(PedidoRepository pedidoRepository,
                          ItemCarrinhoRepository itemCarrinhoRepository,
-                         UsuarioRepository usuarioRepository) {
+                         UsuarioRepository usuarioRepository,
+                         ProdutoRepository produtoRepository) {
         this.pedidoRepository = pedidoRepository;
         this.itemCarrinhoRepository = itemCarrinhoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.produtoRepository = produtoRepository;
     }
 
     public PedidoResponse criarPedido(PedidoRequest request) {
@@ -56,14 +61,22 @@ public class PedidoService {
 
         BigDecimal valorTotal = BigDecimal.ZERO;
         for (ItemCarrinho itemCarrinho : itensCarrinho) {
+            int quantidade = itemCarrinho.getQuantidade();
+            // Reserva a quantidade comprada no estoque do produto: decrementa
+            // o estoque físico e incrementa a quantidade reservada.
+            Produto produto = itemCarrinho.getProduto();
+            produto.setQtdEstoque(produto.getQtdEstoque() - quantidade);
+            produto.setQtdReservado(produto.getQtdReservado() + quantidade);
+            produtoRepository.save(produto);
+
             ItemPedido itemPedido = new ItemPedido(
                 pedido,
-                itemCarrinho.getProduto(),
+                produto,
                 itemCarrinho.getPreco(),
-                itemCarrinho.getQuantidade());
+                quantidade);
             pedido.getItens().add(itemPedido);
             valorTotal = valorTotal.add(
-                itemCarrinho.getPreco().multiply(BigDecimal.valueOf(itemCarrinho.getQuantidade())));
+                itemCarrinho.getPreco().multiply(BigDecimal.valueOf(quantidade)));
         }
         pedido.setValorTotal(valorTotal);
 

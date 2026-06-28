@@ -23,6 +23,7 @@ public class Produto {
     private String descricao;
     private boolean disponivel;
     private int qtdEstoque;
+    private int qtdReservado;
     private BigDecimal preco;
     private LocalDate dataCadastro;
 
@@ -35,6 +36,7 @@ public class Produto {
                    String descricao,
                    boolean disponivel,
                    int qtdEstoque,
+                   int qtdReservado,
                    BigDecimal preco,
                    LocalDate dataCadastro,
                    Categoria categoria) {
@@ -43,6 +45,7 @@ public class Produto {
         this.descricao = descricao;
         this.disponivel = disponivel;
         this.qtdEstoque = qtdEstoque;
+        this.qtdReservado = qtdReservado;
         this.preco = preco;
         this.dataCadastro = dataCadastro;
         this.categoria = categoria;
