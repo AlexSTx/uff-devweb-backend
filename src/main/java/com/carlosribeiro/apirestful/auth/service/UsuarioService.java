@@ -1,8 +1,10 @@
 package com.carlosribeiro.apirestful.auth.service;
 
+import com.carlosribeiro.apirestful.auth.dto.RedefinirSenhaRequest;
 import com.carlosribeiro.apirestful.auth.dto.UsuarioCreate;
 import com.carlosribeiro.apirestful.auth.model.Usuario;
 import com.carlosribeiro.apirestful.auth.repository.UsuarioRepository;
+import com.carlosribeiro.apirestful.auth.util.InfoRedefinicaoSenha;
 import com.carlosribeiro.apirestful.auth.util.InfoUsuario;
 import com.carlosribeiro.apirestful.auth.util.Role;
 import lombok.AllArgsConstructor;
@@ -34,6 +36,20 @@ public class UsuarioService {
         else {
             return new InfoUsuario(false, true, "Email já cadastrado!");
         }
+    }
+
+    // Redefinição de senha simples (sem email/token): o usuário informa o
+    // email e a nova senha, e a senha é trocada diretamente.
+    public InfoRedefinicaoSenha redefinirSenha(RedefinirSenhaRequest request) {
+        Usuario usuario = usuarioRepository
+            .findByEmail(request.email())
+            .orElse(null);
+        if (usuario == null) {
+            return new InfoRedefinicaoSenha(false, "Email não cadastrado.");
+        }
+        usuario.setSenha(passwordEncoder.encode(request.novaSenha()));
+        usuarioRepository.save(usuario);
+        return new InfoRedefinicaoSenha(true, "Senha redefinida com sucesso!");
     }
 
     public List<Usuario> recuperarUsuarios() {
