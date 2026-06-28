@@ -27,6 +27,11 @@ public class PedidoController {
         return pedidoService.pagarPedido(id);
     }
 
+    @PostMapping("{id}/cancelar")
+    public PedidoResponse cancelarPedido(@PathVariable("id") long id) {
+        return pedidoService.cancelarPedido(id);
+    }
+
     @GetMapping
     public List<PedidoResponse> recuperarPedidos() {
         return pedidoService.recuperarPedidos();

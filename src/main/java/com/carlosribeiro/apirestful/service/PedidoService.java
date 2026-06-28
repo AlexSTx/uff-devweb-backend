@@ -111,7 +111,64 @@ public class PedidoService {
         // Uma vez pago, o carrinho do usuário é esvaziado.
         itemCarrinhoRepository.deleteByUsuarioId(usuarioId);
 
+        // Ao confirmar o pagamento, a quantidade reservada deixa de ser
+        // "reservada" e passa a ser simplesmente consumida do estoque: o
+        // estoque físico já foi decrementado na criação do pedido, então
+        // basta zerar a reserva, já que o produto foi efetivamente vendido.
+        for (ItemPedido item : pedido.getItens()) {
+            Produto produto = item.getProduto();
+            produto.setQtdReservado(produto.getQtdReservado() - item.getQuantidade());
+            produtoRepository.save(produto);
+        }
+
         return toResponse(pedido);
+    }
+
+    public PedidoResponse cancelarPedido(Long id) {
+        Long usuarioId = getUsuarioIdAutenticado();
+        Pedido pedido = pedidoRepository.findById(id)
+            .orElseThrow(() -> new EntidadeNaoEncontradaException(
+                "Pedido com id = " + id + " não encontrado."));
+        if (!pedido.getUsuario().getId().equals(usuarioId)) {
+            throw new EntidadeNaoEncontradaException(
+                "Pedido com id = " + id + " não encontrado.");
+        }
+        if (pedido.getStatus() != StatusPedido.PENDENTE) {
+            throw new IllegalStateException(
+                "Pedido com id = " + id + " não está pendente (status atual: " + pedido.getStatus() + ").");
+        }
+        pedido.setStatus(StatusPedido.CANCELADO);
+        restaurarEstoque(pedido);
+        pedidoRepository.save(pedido);
+        return toResponse(pedido);
+    }
+
+    /**
+     * Cancela os pedidos pendentes criados há mais de 10 minutos.
+     * Executado periodicamente pelo PedidoScheduler.
+     */
+    public int cancelarPedidosExpirados() {
+        LocalDateTime prazo = LocalDateTime.now().minusMinutes(10);
+        List<Pedido> expirados = pedidoRepository
+            .findByStatusAndDataPedidoBefore(StatusPedido.PENDENTE, prazo);
+        for (Pedido pedido : expirados) {
+            pedido.setStatus(StatusPedido.CANCELADO);
+            restaurarEstoque(pedido);
+            pedidoRepository.save(pedido);
+        }
+        return expirados.size();
+    }
+
+    private void restaurarEstoque(Pedido pedido) {
+        for (ItemPedido item : pedido.getItens()) {
+            Produto produto = item.getProduto();
+            int quantidade = item.getQuantidade();
+            // O estoque físico tinha sido decrementado na criação do pedido
+            // e a reserva incrementada. Ao cancelar, devolvemos ambos.
+            produto.setQtdEstoque(produto.getQtdEstoque() + quantidade);
+            produto.setQtdReservado(produto.getQtdReservado() - quantidade);
+            produtoRepository.save(produto);
+        }
     }
 
     @Transactional(readOnly = true)
