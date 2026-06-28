@@ -54,8 +54,14 @@ public class ProdutoService {
         produtoRepository.deleteById(id);
     }
 
-    public Page<ProdutoResponse> recuperarProdutosComPaginacao(PageRequest pageRequest, String nome) {
-        Page<Produto> page = produtoRepository.recuperarProdutosComPaginacao(pageRequest, "%" + nome + "%");
+    // Sobrecarga com filtro opcional por categoria.
+    // Quando categoriaId é null, cai no método original (todas as categorias).
+    // Quando não é null, chama a sobrecarga do repository que adiciona o
+    // where por categoria.id — mantendo a paginação do lado do banco.
+    public Page<ProdutoResponse> recuperarProdutosComPaginacao(PageRequest pageRequest, String nome, Long categoriaId) {
+        Page<Produto> page = categoriaId == null
+            ? produtoRepository.recuperarProdutosComPaginacao(pageRequest, "%" + nome + "%")
+            : produtoRepository.recuperarProdutosComPaginacaoECategoria(pageRequest, "%" + nome + "%", categoriaId);
         return page.map((produto) -> produtoMapper.toProdutoResponse(produto));
     }
 }

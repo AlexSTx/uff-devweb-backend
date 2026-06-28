@@ -85,14 +85,17 @@ public class ProdutoController {
     }
 
     // http://localhost:8080/produtos/paginacao?pagina=0&tamanho=3
+    // categoriaId é opcional: quando não informado, lista todas as categorias.
+    // Ex.: /produtos/paginacao?pagina=0&tamanho=5&categoriaId=2
     @GetMapping("paginacao")
     public ResultadoPaginado<ProdutoResponse> recuperarProdutosComPaginacao(
         @RequestParam(name = "pagina", defaultValue = "0") int pagina,
         @RequestParam(name = "tamanho", defaultValue = "5") int tamanho,
-        @RequestParam(name = "nome", defaultValue = "") String nome
+        @RequestParam(name = "nome", defaultValue = "") String nome,
+        @RequestParam(name = "categoriaId", required = false) Long categoriaId
     ) {
         PageRequest pageRequest = PageRequest.of(pagina, tamanho);
-        Page<ProdutoResponse> page = produtoService.recuperarProdutosComPaginacao(pageRequest, nome);
+        Page<ProdutoResponse> page = produtoService.recuperarProdutosComPaginacao(pageRequest, nome, categoriaId);
         return new ResultadoPaginado<>(
             page.getTotalElements(),
             page.getTotalPages(),
