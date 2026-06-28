@@ -33,4 +33,16 @@ public class EstoqueEventProducer {
             evento
         );
     }
+
+    public void publicarEstoqueReposto(EstoqueRepostoEvent evento) {
+        log.info(
+            "Publicando EstoqueRepostoEvent: produtoId={} nome={} qtdEstoqueAtual={}",
+            evento.produtoId(), evento.nome(), evento.qtdEstoqueAtual()
+        );
+        rabbitTemplate.convertAndSend(
+            RabbitMQConfig.EXCHANGE_ESTOQUE,
+            "",
+            evento
+        );
+    }
 }

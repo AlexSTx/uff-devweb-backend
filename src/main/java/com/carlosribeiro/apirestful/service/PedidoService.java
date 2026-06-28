@@ -8,6 +8,7 @@ import com.carlosribeiro.apirestful.dto.PedidoResponse;
 import com.carlosribeiro.apirestful.exception.EntidadeNaoEncontradaException;
 import com.carlosribeiro.apirestful.messaging.EstoqueEsgotadoEvent;
 import com.carlosribeiro.apirestful.messaging.EstoqueEventProducer;
+import com.carlosribeiro.apirestful.messaging.EstoqueRepostoEvent;
 import com.carlosribeiro.apirestful.model.FormaPagamento;
 import com.carlosribeiro.apirestful.model.ItemCarrinho;
 import com.carlosribeiro.apirestful.model.ItemPedido;
@@ -186,9 +187,21 @@ public class PedidoService {
             int quantidade = item.getQuantidade();
             // O estoque físico tinha sido decrementado na criação do pedido
             // e a reserva incrementada. Ao cancelar, devolvemos ambos.
-            produto.setQtdEstoque(produto.getQtdEstoque() + quantidade);
+            int estoqueAntes = produto.getQtdEstoque();
+            produto.setQtdEstoque(estoqueAntes + quantidade);
             produto.setQtdReservado(produto.getQtdReservado() - quantidade);
             produtoRepository.save(produto);
+
+            // Se o estoque estava zerado (Esgotado no frontend) e voltou a
+            // ter unidade(s), avisa em tempo real para destravar o botão.
+            if (estoqueAntes == 0 && quantidade > 0) {
+                estoqueEventProducer.publicarEstoqueReposto(new EstoqueRepostoEvent(
+                    produto.getId(),
+                    produto.getNome(),
+                    produto.getQtdEstoque(),
+                    LocalDateTime.now()
+                ));
+            }
         }
     }
 

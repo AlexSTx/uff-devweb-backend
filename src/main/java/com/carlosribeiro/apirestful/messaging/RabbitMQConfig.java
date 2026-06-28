@@ -22,6 +22,7 @@ public class RabbitMQConfig {
 
     public static final String EXCHANGE_ESTOQUE = "estoque.events";
     public static final String FILA_ESTOQUE_ESGOTADO_WS = "estoque-esgotado.ws";
+    public static final String FILA_ESTOQUE_REPOSTO_WS = "estoque-reposto.ws";
 
     @Bean
     public FanoutExchange exchangeEstoque() {
@@ -36,12 +37,25 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Queue filaEstoqueRepostoWs() {
+        return new Queue(FILA_ESTOQUE_REPOSTO_WS, true);
+    }
+
+    @Bean
     public Binding bindingEstoqueEsgotadoWs(
         Queue filaEstoqueEsgotadoWs,
         FanoutExchange exchangeEstoque
     ) {
         // Fanout ignora a routing key; toda mensagem da exchange vai para a fila.
         return BindingBuilder.bind(filaEstoqueEsgotadoWs).to(exchangeEstoque);
+    }
+
+    @Bean
+    public Binding bindingEstoqueRepostoWs(
+        Queue filaEstoqueRepostoWs,
+        FanoutExchange exchangeEstoque
+    ) {
+        return BindingBuilder.bind(filaEstoqueRepostoWs).to(exchangeEstoque);
     }
 
     @Bean
