@@ -38,6 +38,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
+            // Por default o Spring só aceita handshake same-origin. Como o
+            // frontend roda em outra origem (dev: localhost:5173/8081,
+            // nginx em prod: localhost:8081), precisamos liberar essas.
+            // setAllowedOriginPatterns("*") aceita qualquer host (com
+            // curingas em scheme/port) — suficiente para o toy app.
+            .setAllowedOriginPatterns("*")
             .addInterceptors(jwtHandshakeInterceptor);
         // Sem .withSockJS(): vamos de WS puro para compatibilidade com
         // @stomp/stompjs (brokerURL ws://...) no frontend.

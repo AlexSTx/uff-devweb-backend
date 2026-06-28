@@ -74,6 +74,19 @@ public class PedidoService {
             produto.setQtdReservado(produto.getQtdReservado() + quantidade);
             produtoRepository.save(produto);
 
+            // O estoque físico visível aos demais clientes (estoque - reserva)
+            // já é atualizado aqui. Se zerou, é neste momento que o produto
+            // deixa de ser comprável - não no pagamento. Caso contrário, dois
+            // clientes poderiam reservar a mesma última unidade.
+            if (produto.getQtdEstoque() == 0) {
+                estoqueEventProducer.publicarEstoqueEsgotado(new EstoqueEsgotadoEvent(
+                    produto.getId(),
+                    produto.getNome(),
+                    0,
+                    LocalDateTime.now()
+                ));
+            }
+
             ItemPedido itemPedido = new ItemPedido(
                 pedido,
                 produto,
@@ -120,22 +133,13 @@ public class PedidoService {
         // "reservada" e passa a ser simplesmente consumida do estoque: o
         // estoque físico já foi decrementado na criação do pedido, então
         // basta zerar a reserva, já que o produto foi efetivamente vendido.
+        // Não republicamos EstoqueEsgotadoEvent aqui: o evento foi emitido
+        // (se aplicável) na criação do pedido, que é quando o estoque
+        // visível aos clientes zerou.
         for (ItemPedido item : pedido.getItens()) {
             Produto produto = item.getProduto();
             produto.setQtdReservado(produto.getQtdReservado() - item.getQuantidade());
             produtoRepository.save(produto);
-
-            // Se o estoque físico zerou (qtdEstoque = comprado - reservado = 0),
-            // publica um EstoqueEsgotadoEvent no RabbitMQ para divulgar em tempo
-            // real via WebSocket a quem está com a página do produto aberta.
-            if (produto.getQtdEstoque() == 0) {
-                estoqueEventProducer.publicarEstoqueEsgotado(new EstoqueEsgotadoEvent(
-                    produto.getId(),
-                    produto.getNome(),
-                    0,
-                    LocalDateTime.now()
-                ));
-            }
         }
 
         return toResponse(pedido);
