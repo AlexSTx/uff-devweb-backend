@@ -53,6 +53,21 @@ public class GlobalExceptionHandler {
                 e.getMessage()), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(
+        IllegalStateException e, HttpServletRequest request) {
+        return new ResponseEntity<>(
+            new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.name(),
+                request.getMethod(),
+                request.getRequestURI(),
+                null,
+                e.getMessage()
+            ), HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(SQLIntegrityConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleSQLIntegrityConstraintViolation(
         SQLIntegrityConstraintViolationException e, HttpServletRequest request) {

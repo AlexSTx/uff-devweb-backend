@@ -45,8 +45,8 @@ public class ProdutoService {
         Produto produto = produtoMapper.toProduto(produtoRequest);
         produtoRepository.findById(produto.getId())
             .ifPresent(existing -> produto.setDataCadastro(existing.getDataCadastro()));
-        produto = produtoRepository.save(produto);
-        return produtoMapper.toProdutoResponse(produto);
+        Produto salvo = produtoRepository.save(produto);
+        return produtoMapper.toProdutoResponse(salvo);
     }
 
     public void removerProdutoPorId(long id) {
