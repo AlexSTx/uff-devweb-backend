@@ -23,6 +23,20 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
     )
     Page<Produto> recuperarProdutosComPaginacao(PageRequest pageRequest, @Param("nome") String nome);
 
+    // Sobrecarga com filtro por categoria. Usada quando a página lista apenas
+    // os produtos de uma categoria (ex.: clicar no card "Placas de Vídeo").
+    // Manter como método separado evita mexer na query original e mantém a
+    // compatibilidade com qualquer chamada existente.
+    @Query(
+        value = "select p from Produto p left join fetch p.categoria where p.nome like :nome and p.categoria.id = :categoriaId order by p.id",
+        countQuery = "select count(p) from Produto p where p.nome like :nome and p.categoria.id = :categoriaId"
+    )
+    Page<Produto> recuperarProdutosComPaginacaoECategoria(
+        PageRequest pageRequest,
+        @Param("nome") String nome,
+        @Param("categoriaId") Long categoriaId
+    );
+
     /**
      * Recupera um produto com lock pessimista de escrita (SELECT ... FOR
      * UPDATE). Usado no checkout para evitar condição de corrida no desconto
