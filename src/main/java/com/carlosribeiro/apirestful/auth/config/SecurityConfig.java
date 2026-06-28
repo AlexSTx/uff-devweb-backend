@@ -68,6 +68,10 @@ public class SecurityConfig {
                .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                .requestMatchers(HttpMethod.GET, "/produtos/**").permitAll()
 
+               // WebSocket handshake. O JWT é validado em JwtHandshakeInterceptor,
+               // por isso deixamos o endpoint passar pelo Spring Security.
+               .requestMatchers("/ws/**").permitAll()
+
                .requestMatchers(HttpMethod.POST, "/produtos/**").hasRole(Role.ADMIN.name())
                .requestMatchers(HttpMethod.PUT, "/produtos/**").hasRole(Role.ADMIN.name())
                .requestMatchers(HttpMethod.DELETE, "/produtos/**").hasRole(Role.ADMIN.name())

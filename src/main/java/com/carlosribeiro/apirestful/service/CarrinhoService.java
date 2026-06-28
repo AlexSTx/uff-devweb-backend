@@ -5,6 +5,7 @@ import com.carlosribeiro.apirestful.auth.repository.UsuarioRepository;
 import com.carlosribeiro.apirestful.dto.ItemCarrinhoRequest;
 import com.carlosribeiro.apirestful.dto.ItemCarrinhoResponse;
 import com.carlosribeiro.apirestful.exception.EntidadeNaoEncontradaException;
+import com.carlosribeiro.apirestful.exception.EstoqueInsuficienteCarrinhoException;
 import com.carlosribeiro.apirestful.model.ItemCarrinho;
 import com.carlosribeiro.apirestful.model.Produto;
 import com.carlosribeiro.apirestful.repository.ItemCarrinhoRepository;
@@ -18,6 +19,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import static java.util.Collections.singletonList;
 
 @Service
 @Transactional
@@ -53,10 +56,26 @@ public class CarrinhoService {
         // e mantemos o preço registrado no momento da primeira adição.
         Optional<ItemCarrinho> existente = itemCarrinhoRepository
             .findByUsuarioIdAndProdutoId(usuarioId, request.produtoId());
+
+        // Quantidade total que ficaria no carrinho após esta adição. Tem que
+        // caber no estoque físico atual do produto — senão o carrinho promete
+        // mais do que se pode entregar e o checkout só vai falhar depois.
+        int quantidadeFinal = request.quantidade()
+            + existente.map(ItemCarrinho::getQuantidade).orElse(0);
+        if (quantidadeFinal > produto.getQtdEstoque()) {
+            throw new EstoqueInsuficienteCarrinhoException(singletonList(
+                new EstoqueInsuficienteCarrinhoException.ItemProblema(
+                    produto.getId(),
+                    produto.getNome(),
+                    quantidadeFinal,
+                    produto.getQtdEstoque()
+                )));
+        }
+
         ItemCarrinho item;
         if (existente.isPresent()) {
             item = existente.get();
-            item.setQuantidade(item.getQuantidade() + request.quantidade());
+            item.setQuantidade(quantidadeFinal);
         } else {
             Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new EntidadeNaoEncontradaException(
@@ -80,6 +99,19 @@ public class CarrinhoService {
         if (!item.getUsuario().getId().equals(usuarioId)) {
             throw new EntidadeNaoEncontradaException(
                 "Item de carrinho com id = " + itemId + " não encontrado.");
+        }
+        // Barreira de estoque: a nova quantidade não pode exceder o estoque
+        // físico atual do produto. Em vez de aceitar e descobrir só no
+        // checkout, falhamos aqui com HTTP 409 + lista detalhada.
+        Produto produto = item.getProduto();
+        if (novaQuantidade > produto.getQtdEstoque()) {
+            throw new EstoqueInsuficienteCarrinhoException(singletonList(
+                new EstoqueInsuficienteCarrinhoException.ItemProblema(
+                    produto.getId(),
+                    produto.getNome(),
+                    novaQuantidade,
+                    produto.getQtdEstoque()
+                )));
         }
         item.setQuantidade(novaQuantidade);
         itemCarrinhoRepository.save(item);
@@ -111,6 +143,10 @@ public class CarrinhoService {
     private ItemCarrinhoResponse toResponse(ItemCarrinho item) {
         Produto p = item.getProduto();
         BigDecimal subtotal = item.getPreco().multiply(BigDecimal.valueOf(item.getQuantidade()));
+        // disponivel=false quando estoque físico zerou; estoqueDisponivel
+        // permite ao frontend também identificar o caso "parcial" (estoque
+        // > 0 mas menor do que a quantidade pedida).
+        boolean disponivel = p.getQtdEstoque() > 0;
         return new ItemCarrinhoResponse(
             item.getId(),
             p.getId(),
@@ -120,7 +156,9 @@ public class CarrinhoService {
             item.getPreco(),
             item.getQuantidade(),
             subtotal,
-            item.getDataAdicao()
+            item.getDataAdicao(),
+            disponivel,
+            p.getQtdEstoque()
         );
     }
 }
