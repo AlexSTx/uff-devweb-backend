@@ -95,6 +95,31 @@ public class GlobalExceptionHandler {
             ), HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(EstoqueInsuficienteCarrinhoException.class)
+    public ResponseEntity<ErrorResponse> handleEstoqueInsuficienteCarrinho(
+        EstoqueInsuficienteCarrinhoException e, HttpServletRequest request) {
+        // Mesmo formato/HTTP do handler de EstoqueInsuficienteException, para
+        // o frontend reaproveitar o parser de "produtoId=…" → "nome: pedido=N, disponivel=M".
+        Map<String, String> problemas = new HashMap<>();
+        for (EstoqueInsuficienteCarrinhoException.ItemProblema p : e.getItens()) {
+            problemas.put(
+                "produtoId=" + p.produtoId(),
+                p.nome() + ": pedido=" + p.quantidadePedida()
+                    + ", disponivel=" + p.estoqueDisponivel()
+            );
+        }
+        return new ResponseEntity<>(
+            new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.name(),
+                request.getMethod(),
+                request.getRequestURI(),
+                problemas,
+                e.getMessage()
+            ), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(SQLIntegrityConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleSQLIntegrityConstraintViolation(
         SQLIntegrityConstraintViolationException e, HttpServletRequest request) {
