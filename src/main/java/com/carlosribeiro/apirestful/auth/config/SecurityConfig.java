@@ -83,6 +83,9 @@ public class SecurityConfig {
                 // qq usuário pode se logar
                 .requestMatchers(HttpMethod.POST, "/autenticacao/login").permitAll()
 
+                // qq usuário pode redefinir a própria senha (reset simples)
+                .requestMatchers(HttpMethod.POST, "/autenticacao/redefinir-senha").permitAll()
+
                 // Para acessar /favoritos é preciso estar logado
                 //.requestMatchers(HttpMethod.GET,"/favoritos/**").authenticated()
                 //.requestMatchers(HttpMethod.POST,"/favoritos/**").authenticated()

@@ -1,8 +1,11 @@
 package com.carlosribeiro.apirestful.auth.controller;
 
+import com.carlosribeiro.apirestful.auth.dto.RedefinirSenhaRequest;
 import com.carlosribeiro.apirestful.auth.model.Usuario;
 import com.carlosribeiro.apirestful.auth.repository.UsuarioRepository;
 import com.carlosribeiro.apirestful.auth.service.JwtService;
+import com.carlosribeiro.apirestful.auth.service.UsuarioService;
+import com.carlosribeiro.apirestful.auth.util.InfoRedefinicaoSenha;
 import com.carlosribeiro.apirestful.auth.util.TokenResponse;
 import com.carlosribeiro.apirestful.auth.util.UsuarioLogin;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,6 +40,7 @@ public class AuthenticationController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioService usuarioService;
 
     @PostMapping("login")  // http://localhost:8080/autenticacao/login
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody UsuarioLogin usuarioLogin,
@@ -78,5 +82,10 @@ public class AuthenticationController {
 
         return new ResponseEntity<>(new TokenResponse(
             accessToken, usuario.getId(), usuario.getNome(), usuario.getRole().name()), HttpStatus.OK);
+    }
+
+    @PostMapping("redefinir-senha")  // http://localhost:8080/autenticacao/redefinir-senha
+    public InfoRedefinicaoSenha redefinirSenha(@Valid @RequestBody RedefinirSenhaRequest request) {
+        return usuarioService.redefinirSenha(request);
     }
 }
