@@ -9,7 +9,6 @@ import com.carlosribeiro.apirestful.exception.EstoqueInsuficienteException;
 import com.carlosribeiro.apirestful.exception.EntidadeNaoEncontradaException;
 import com.carlosribeiro.apirestful.messaging.EstoqueAltaEvent;
 import com.carlosribeiro.apirestful.messaging.EstoqueBaixaEvent;
-import com.carlosribeiro.apirestful.messaging.EstoqueEventProducer;
 import com.carlosribeiro.apirestful.model.FormaPagamento;
 import com.carlosribeiro.apirestful.model.ItemCarrinho;
 import com.carlosribeiro.apirestful.model.ItemPedido;
@@ -19,6 +18,7 @@ import com.carlosribeiro.apirestful.model.StatusPedido;
 import com.carlosribeiro.apirestful.repository.ItemCarrinhoRepository;
 import com.carlosribeiro.apirestful.repository.PedidoRepository;
 import com.carlosribeiro.apirestful.repository.ProdutoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,18 +35,23 @@ public class PedidoService {
     private final ItemCarrinhoRepository itemCarrinhoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ProdutoRepository produtoRepository;
-    private final EstoqueEventProducer estoqueEventProducer;
+    // Publicamos os eventos de estoque como ApplicationEvents do Spring (e não
+    // direto no RabbitMQ). Um @TransactionalEventListener(AFTER_COMMIT) faz o
+    // envio real ao broker SÓ depois do commit — assim um GET /carrinho disparado
+    // pela notificação WebSocket sempre enxerga o estoque já persistido, e um
+    // eventual rollback não dispara evento fantasma.
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public PedidoService(PedidoRepository pedidoRepository,
                          ItemCarrinhoRepository itemCarrinhoRepository,
                          UsuarioRepository usuarioRepository,
                          ProdutoRepository produtoRepository,
-                         EstoqueEventProducer estoqueEventProducer) {
+                         ApplicationEventPublisher applicationEventPublisher) {
         this.pedidoRepository = pedidoRepository;
         this.itemCarrinhoRepository = itemCarrinhoRepository;
         this.usuarioRepository = usuarioRepository;
         this.produtoRepository = produtoRepository;
-        this.estoqueEventProducer = estoqueEventProducer;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public PedidoResponse criarPedido(PedidoRequest request) {
@@ -120,8 +125,9 @@ public class PedidoService {
             // decremento, mesmo parcial (ex.: 10 -> 7), e não só quando zera:
             // assim o carrinho/checkout de outros usuários reavaliam em tempo
             // real se a quantidade deles ainda cabe no novo estoque (e, se não
-            // couber, o frontend pede para diminuir).
-            estoqueEventProducer.publicarEstoqueBaixa(new EstoqueBaixaEvent(
+            // couber, o frontend pede para diminuir). O envio ao broker é
+            // adiado para AFTER_COMMIT pelo EstoqueEventTransactionalForwarder.
+            applicationEventPublisher.publishEvent(new EstoqueBaixaEvent(
                 produto.getId(),
                 produto.getNome(),
                 produto.getQtdEstoque(),
@@ -237,7 +243,8 @@ public class PedidoService {
             // limites de quantidade no carrinho/checkout de quem estava
             // esperando. Sem unidades devolvidas não há mudança a comunicar.
             if (quantidade > 0) {
-                estoqueEventProducer.publicarEstoqueAlta(new EstoqueAltaEvent(
+                // Envio ao broker adiado para AFTER_COMMIT (ver forwarder).
+                applicationEventPublisher.publishEvent(new EstoqueAltaEvent(
                     produto.getId(),
                     produto.getNome(),
                     produto.getQtdEstoque(),
