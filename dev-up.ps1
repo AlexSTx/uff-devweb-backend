@@ -59,6 +59,21 @@ Write-Host "  RabbitMQ painel  http://localhost:15672 (guest/guest)" -Foreground
 Write-Host "  MySQL            localhost:3306 (root/password, db desweb)" -ForegroundColor DarkGray
 Write-Host ""
 
+# Broker RabbitMQ sempre limpo ao subir. Removemos o container do rabbit (e seu
+# volume anônimo, via -v) antes do "up". Como o broker é efêmero (sem volume
+# nomeado — ver docker-compose.override.yml), ele sobe sem a topologia durável
+# antiga e o backend redeclara filas/exchange no startup. Assim, mudar a
+# estrutura de filas/exchange não exige mais resetar volume na mão. Só roda
+# quando o comando é "up" (não em down/logs/etc.).
+if ($composeArgs[0] -eq 'up') {
+    Write-Host "==> Resetando RabbitMQ (broker limpo)..." -ForegroundColor Cyan
+    docker compose `
+        -f $composeBase `
+        -f $composeOverride `
+        --project-directory $rootDir `
+        rm -sfv rabbitmq *> $null
+}
+
 docker compose `
     -f $composeBase `
     -f $composeOverride `

@@ -27,6 +27,20 @@ services:
       start_period: 90s
       retries: 15
 
+  rabbitmq:
+    # Dev: broker EFÊMERO. Tiramos o volume persistente da base (!override [])
+    # e montamos /var/lib/rabbitmq como tmpfs (em RAM). Assim:
+    #  - não há volume nomeado com topologia durável antiga para conflitar;
+    #  - não há "herança de volume" do compose no recreate (tmpfs é por container);
+    #  - qualquer "docker compose up" que (re)crie o rabbit sobe limpo, sem
+    #    precisar de dev-up.ps1 nem de "docker volume rm" na mão.
+    # O backend redeclara exchange/filas/bindings no startup, e as mensagens de
+    # estoque são notificações em tempo real (descartáveis), então não há perda
+    # relevante em dev.
+    volumes: !override []
+    tmpfs:
+      - /var/lib/rabbitmq
+
   frontend:
     build:
       context: ./uff-webdev-frontend
