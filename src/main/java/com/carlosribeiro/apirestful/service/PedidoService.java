@@ -7,9 +7,9 @@ import com.carlosribeiro.apirestful.dto.PedidoRequest;
 import com.carlosribeiro.apirestful.dto.PedidoResponse;
 import com.carlosribeiro.apirestful.exception.EstoqueInsuficienteException;
 import com.carlosribeiro.apirestful.exception.EntidadeNaoEncontradaException;
-import com.carlosribeiro.apirestful.messaging.EstoqueEsgotadoEvent;
+import com.carlosribeiro.apirestful.messaging.EstoqueAltaEvent;
+import com.carlosribeiro.apirestful.messaging.EstoqueBaixaEvent;
 import com.carlosribeiro.apirestful.messaging.EstoqueEventProducer;
-import com.carlosribeiro.apirestful.messaging.EstoqueRepostoEvent;
 import com.carlosribeiro.apirestful.model.FormaPagamento;
 import com.carlosribeiro.apirestful.model.ItemCarrinho;
 import com.carlosribeiro.apirestful.model.ItemPedido;
@@ -114,18 +114,19 @@ public class PedidoService {
             produto.setQtdReservado(produto.getQtdReservado() + quantidade);
             produtoRepository.save(produto);
 
-            // O estoque físico visível aos demais clientes (estoque - reserva)
-            // já é atualizado aqui. Se zerou, é neste momento que o produto
-            // deixa de ser comprável - não no pagamento. Caso contrário, dois
-            // clientes poderiam reservar a mesma última unidade.
-            if (produto.getQtdEstoque() == 0) {
-                estoqueEventProducer.publicarEstoqueEsgotado(new EstoqueEsgotadoEvent(
-                    produto.getId(),
-                    produto.getNome(),
-                    0,
-                    LocalDateTime.now()
-                ));
-            }
+            // O estoque físico visível aos demais clientes já caiu aqui (na
+            // criação do pedido, não no pagamento — senão dois clientes
+            // reservariam a mesma última unidade). Publicamos a baixa a CADA
+            // decremento, mesmo parcial (ex.: 10 -> 7), e não só quando zera:
+            // assim o carrinho/checkout de outros usuários reavaliam em tempo
+            // real se a quantidade deles ainda cabe no novo estoque (e, se não
+            // couber, o frontend pede para diminuir).
+            estoqueEventProducer.publicarEstoqueBaixa(new EstoqueBaixaEvent(
+                produto.getId(),
+                produto.getNome(),
+                produto.getQtdEstoque(),
+                LocalDateTime.now()
+            ));
 
             ItemPedido itemPedido = new ItemPedido(
                 pedido,
@@ -173,9 +174,9 @@ public class PedidoService {
         // "reservada" e passa a ser simplesmente consumida do estoque: o
         // estoque físico já foi decrementado na criação do pedido, então
         // basta zerar a reserva, já que o produto foi efetivamente vendido.
-        // Não republicamos EstoqueEsgotadoEvent aqui: o evento foi emitido
-        // (se aplicável) na criação do pedido, que é quando o estoque
-        // visível aos clientes zerou.
+        // Não republicamos evento de estoque aqui: a baixa já foi emitida na
+        // criação do pedido, que é quando o estoque visível aos clientes caiu.
+        // No pagamento só zeramos a reserva (o estoque físico não muda).
         for (ItemPedido item : pedido.getItens()) {
             Produto produto = item.getProduto();
             produto.setQtdReservado(produto.getQtdReservado() - item.getQuantidade());
@@ -231,10 +232,12 @@ public class PedidoService {
             produto.setQtdReservado(produto.getQtdReservado() - quantidade);
             produtoRepository.save(produto);
 
-            // Se o estoque estava zerado (Esgotado no frontend) e voltou a
-            // ter unidade(s), avisa em tempo real para destravar o botão.
-            if (estoqueAntes == 0 && quantidade > 0) {
-                estoqueEventProducer.publicarEstoqueReposto(new EstoqueRepostoEvent(
+            // Devolvemos estoque a CADA item (mesmo aumento parcial), avisando
+            // em tempo real para destravar o botão "Esgotado" e atualizar os
+            // limites de quantidade no carrinho/checkout de quem estava
+            // esperando. Sem unidades devolvidas não há mudança a comunicar.
+            if (quantidade > 0) {
+                estoqueEventProducer.publicarEstoqueAlta(new EstoqueAltaEvent(
                     produto.getId(),
                     produto.getNome(),
                     produto.getQtdEstoque(),

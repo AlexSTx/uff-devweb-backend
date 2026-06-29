@@ -7,15 +7,14 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Consome os eventos de estoque da fila do RabbitMQ e os repassa, via
- * WebSocket (STOMP), para todos os clientes que estão com a página do
- * produto aberta — eles escutam o tópico {@code /topic/produtos/{id}}.
+ * Consome os eventos de estoque das filas do RabbitMQ e os repassa, via
+ * WebSocket (STOMP), para todos os clientes inscritos no tópico do produto
+ * ({@code /topic/produtos/{id}}) — páginas de produto, carrinho e checkout.
  *
- * Decidiu-se manter o publicador (PedidoService) e o consumidor (aqui)
- * separados para que o tamanho do fluxo fique explícito: domínio publica →
- * RabbitMQ entrega → WebSocket broadcaster envia → navegador atualiza.
- * Ambos os eventos (esgotado e reposto) são roteados para o mesmo tópico
- * por produto; o frontend distingue pelo campo "tipo" implícito no payload.
+ * São DUAS filas distintas, uma por direção da mudança de estoque. Como a
+ * exchange é direct (routing key), cada listener recebe só o seu tipo de
+ * evento — sem entrega cruzada e sem eventos fantasma. Ambos repassam para o
+ * mesmo tópico por produto; o frontend reage ao novo {@code qtdEstoqueAtual}.
  */
 @Component
 public class EstoqueEventConsumer {
@@ -28,21 +27,21 @@ public class EstoqueEventConsumer {
         this.messagingTemplate = messagingTemplate;
     }
 
-    @RabbitListener(queues = RabbitMQConfig.FILA_ESTOQUE_ESGOTADO_WS)
-    public void onEstoqueEsgotado(EstoqueEsgotadoEvent evento) {
+    @RabbitListener(queues = RabbitMQConfig.FILA_ESTOQUE_BAIXA_WS)
+    public void onEstoqueBaixa(EstoqueBaixaEvent evento) {
         String destino = "/topic/produtos/" + evento.produtoId();
         log.info(
-            "Broadcast EstoqueEsgotadoEvent via WebSocket para {}: qtdEstoqueFinal={}",
-            destino, evento.qtdEstoqueFinal()
+            "Broadcast EstoqueBaixaEvent via WebSocket para {}: qtdEstoqueAtual={}",
+            destino, evento.qtdEstoqueAtual()
         );
         messagingTemplate.convertAndSend(destino, evento);
     }
 
-    @RabbitListener(queues = RabbitMQConfig.FILA_ESTOQUE_REPOSTO_WS)
-    public void onEstoqueReposto(EstoqueRepostoEvent evento) {
+    @RabbitListener(queues = RabbitMQConfig.FILA_ESTOQUE_ALTA_WS)
+    public void onEstoqueAlta(EstoqueAltaEvent evento) {
         String destino = "/topic/produtos/" + evento.produtoId();
         log.info(
-            "Broadcast EstoqueRepostoEvent via WebSocket para {}: qtdEstoqueAtual={}",
+            "Broadcast EstoqueAltaEvent via WebSocket para {}: qtdEstoqueAtual={}",
             destino, evento.qtdEstoqueAtual()
         );
         messagingTemplate.convertAndSend(destino, evento);

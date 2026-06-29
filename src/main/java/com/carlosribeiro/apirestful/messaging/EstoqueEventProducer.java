@@ -6,10 +6,12 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Publica o {@link EstoqueEsgotadoEvent} na exchange de eventos de estoque
- * do RabbitMQ. É chamado pelo domínio (PedidoService) quando o pagamento
- * zera o estoque físico de um produto, mantendo o código de negócio isolado
- * dos detalhes do broker.
+ * Publica os eventos de estoque na exchange (direct) de eventos do RabbitMQ.
+ * É chamado pelo domínio (PedidoService) a cada alteração de estoque físico,
+ * mantendo o código de negócio isolado dos detalhes do broker.
+ *
+ * A routing key separa as duas filas: baixa (estoque diminuiu) e alta
+ * (estoque aumentou).
  */
 @Component
 public class EstoqueEventProducer {
@@ -22,26 +24,26 @@ public class EstoqueEventProducer {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void publicarEstoqueEsgotado(EstoqueEsgotadoEvent evento) {
+    public void publicarEstoqueBaixa(EstoqueBaixaEvent evento) {
         log.info(
-            "Publicando EstoqueEsgotadoEvent: produtoId={} nome={} qtdEstoqueFinal={}",
-            evento.produtoId(), evento.nome(), evento.qtdEstoqueFinal()
-        );
-        rabbitTemplate.convertAndSend(
-            RabbitMQConfig.EXCHANGE_ESTOQUE,
-            "", // Fanout: routing key ignorada
-            evento
-        );
-    }
-
-    public void publicarEstoqueReposto(EstoqueRepostoEvent evento) {
-        log.info(
-            "Publicando EstoqueRepostoEvent: produtoId={} nome={} qtdEstoqueAtual={}",
+            "Publicando EstoqueBaixaEvent: produtoId={} nome={} qtdEstoqueAtual={}",
             evento.produtoId(), evento.nome(), evento.qtdEstoqueAtual()
         );
         rabbitTemplate.convertAndSend(
             RabbitMQConfig.EXCHANGE_ESTOQUE,
-            "",
+            RabbitMQConfig.RK_ESTOQUE_BAIXA,
+            evento
+        );
+    }
+
+    public void publicarEstoqueAlta(EstoqueAltaEvent evento) {
+        log.info(
+            "Publicando EstoqueAltaEvent: produtoId={} nome={} qtdEstoqueAtual={}",
+            evento.produtoId(), evento.nome(), evento.qtdEstoqueAtual()
+        );
+        rabbitTemplate.convertAndSend(
+            RabbitMQConfig.EXCHANGE_ESTOQUE,
+            RabbitMQConfig.RK_ESTOQUE_ALTA,
             evento
         );
     }

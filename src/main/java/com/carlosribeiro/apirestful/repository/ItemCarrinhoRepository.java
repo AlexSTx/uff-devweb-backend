@@ -10,4 +10,7 @@ public interface ItemCarrinhoRepository extends JpaRepository<ItemCarrinho, Long
     List<ItemCarrinho> findByUsuarioId(Long usuarioId);
     Optional<ItemCarrinho> findByUsuarioIdAndProdutoId(Long usuarioId, Long produtoId);
     void deleteByUsuarioId(Long usuarioId);
+    // Usado na exclusão em cascata de um produto: tira o produto de todos os
+    // carrinhos antes de apagá-lo.
+    void deleteByProdutoId(Long produtoId);
 }
