@@ -19,6 +19,15 @@ UPDATE categoria SET nome = 'Placa de Vídeo' WHERE id = 2;
 UPDATE categoria SET nome = 'Memória RAM'   WHERE id = 3;
 
 -- ----------------------------- Produtos (remove antigos e insere novos)
+-- Antes de remover os produtos, limpa as tabelas que referenciam produto via
+-- foreign key (itens de carrinho e itens de pedido). Sem isso, em bases que ja
+-- tinham carrinho/pedido criados (quem ja rodava o app antes desta migracao) o
+-- DELETE FROM produto falha com "Cannot delete or update a parent row: a
+-- foreign key constraint fails". Numa base nova essas tabelas estao vazias e a
+-- limpeza e inofensiva. Os pedidos antigos (cabecalho) ficam sem itens, mas
+-- referenciavam produtos de hortifruti que deixam de existir nesta re-tematizacao.
+DELETE FROM item_carrinho;
+DELETE FROM item_pedido;
 DELETE FROM produto;
 
 INSERT INTO produto (id, imagem, nome, descricao, disponivel, qtd_estoque, preco, data_cadastro, categoria_id) VALUES
